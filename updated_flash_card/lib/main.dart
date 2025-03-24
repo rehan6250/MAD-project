@@ -7,9 +7,14 @@ class HomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text("Flashcard Categories")),
+      backgroundColor: Colors.lightBlueAccent,
+      appBar: AppBar(
+
+        backgroundColor: Colors.lightBlue,
+          title: Text("Flashcard Categories")),
       body: Center(
         child: Column(
+
           mainAxisAlignment: MainAxisAlignment.center,
           children:
               ["Web Development", "Flutter"].map((deck) {
@@ -132,7 +137,9 @@ class _FlashCardScreenState extends State<FlashCardScreen> {
     var currentDeck = [...decks[widget.deckName]!, ...userFlashcards];
 
     return Scaffold(
+      backgroundColor: Colors.lightBlue,
       appBar: AppBar(
+        backgroundColor: Colors.lightBlueAccent,
         title: Text("${widget.deckName} Flashcards"),
         actions: [
           IconButton(icon: Icon(Icons.add), onPressed: showAddFlashcardDialog),
@@ -142,6 +149,7 @@ class _FlashCardScreenState extends State<FlashCardScreen> {
         child:
             quizCompleted
                 ? Column(
+
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
@@ -177,7 +185,7 @@ class _FlashCardScreenState extends State<FlashCardScreen> {
                         height: 200,
                         alignment: Alignment.center,
                         decoration: BoxDecoration(
-                          color: Colors.blueAccent,
+                          color: Colors.blueGrey,
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(
@@ -205,6 +213,7 @@ class _FlashCardScreenState extends State<FlashCardScreen> {
                       ),
                     ],
                     SizedBox(height: 20),
+
                     Text("Score: $score", style: TextStyle(fontSize: 18)),
                   ],
                 ),

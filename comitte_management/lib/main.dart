@@ -22,12 +22,11 @@ class CommitteeScreen extends StatefulWidget {
 
 class _CommitteeScreenState extends State<CommitteeScreen> {
   final TextEditingController nameController = TextEditingController();
-  final TextEditingController amountController = TextEditingController();
   final TextEditingController limitController = TextEditingController();
 
-  List<Map<String, dynamic>> members = [];
+  List<String> members = [];
   List<String> committeeOrder = [];
-  double? moneyLimit; // Ensures limit is set
+  double? moneyLimit;
   double totalCommitteeAmount = 0;
 
   void setMoneyLimit() {
@@ -51,7 +50,6 @@ class _CommitteeScreenState extends State<CommitteeScreen> {
 
   void addMember() {
     String name = nameController.text;
-    double? amount = double.tryParse(amountController.text);
 
     if (moneyLimit == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -60,34 +58,26 @@ class _CommitteeScreenState extends State<CommitteeScreen> {
       return;
     }
 
-    if (name.isEmpty || amount == null) {
+    if (name.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Enter a valid name and amount")),
-      );
-      return;
-    }
-
-    if (amount != moneyLimit) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Amount must be exactly $moneyLimit")),
+        SnackBar(content: Text("Enter a valid name")),
       );
       return;
     }
 
     setState(() {
-      members.add({"name": name, "amount": amount});
-      totalCommitteeAmount += amount;
+      members.add(name);
+      totalCommitteeAmount = members.length * moneyLimit!;
       nameController.clear();
-      amountController.clear();
     });
   }
 
   void startCommittee() {
     if (members.isNotEmpty) {
-      List<String> names = members.map((m) => m["name"] as String).toList();
-      names.shuffle(Random());
+      List<String> shuffledList = List.from(members);
+      shuffledList.shuffle(Random());
       setState(() {
-        committeeOrder = names;
+        committeeOrder = shuffledList;
       });
     }
   }
@@ -108,7 +98,6 @@ class _CommitteeScreenState extends State<CommitteeScreen> {
             ElevatedButton(onPressed: setMoneyLimit, child: Text("Set Limit")),
             SizedBox(height: 10),
             TextField(controller: nameController, decoration: InputDecoration(labelText: "Enter Member Name")),
-            TextField(controller: amountController, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: "Enter Amount")),
             ElevatedButton(onPressed: addMember, child: Text("Add Member")),
             SizedBox(height: 20),
             Text("Members List", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
@@ -117,7 +106,7 @@ class _CommitteeScreenState extends State<CommitteeScreen> {
                 itemCount: members.length,
                 itemBuilder: (context, index) {
                   return ListTile(
-                    title: Text("${members[index]['name']} - ${members[index]['amount']}"),
+                    title: Text(members[index]),
                   );
                 },
               ),

@@ -8,8 +8,9 @@ class FlashCardApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData.dark(),
+
+      // debugShowCheckedModeBanner: false,
+      // theme: ThemeData.dark(),
       home: FlashCardScreen(),
     );
   }

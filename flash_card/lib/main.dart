@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:sqflite/sqflite.dart';
+import 'package:path/path.dart';
+import 'package:path_provider/path_provider.dart';
+import 'dart:io';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
   runApp(FlashCardApp());
 }
 
@@ -8,9 +13,7 @@ class FlashCardApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-
-      // debugShowCheckedModeBanner: false,
-      // theme: ThemeData.dark(),
+      debugShowCheckedModeBanner: false,
       home: FlashCardScreen(),
     );
   }
@@ -22,15 +25,64 @@ class FlashCardScreen extends StatefulWidget {
 }
 
 class _FlashCardScreenState extends State<FlashCardScreen> {
-  List<bool> showAnswers = List.generate(5, (_) => false);
+  late Database _database;
+  List<Map<String, dynamic>> _flashcards = [];
+  List<bool> showAnswers = [];
 
-  final List<Map<String, String>> flashcards = [
-    {"question": "What does HTML stand for?", "answer": "Hypertext Markup Language"},
-    {"question": "Which tag is used for the largest heading in HTML?", "answer": "<h1>"},
-    {"question": "What does CSS stand for?", "answer": "Cascading Style Sheets"},
-    {"question": "Which language is used to add interactivity to websites?", "answer": "JavaScript"},
-    {"question": "What is the purpose of the <meta> tag?", "answer": "To provide metadata"},
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _initDatabase();
+  }
+
+  Future<void> _initDatabase() async {
+    final directory = await getApplicationDocumentsDirectory();
+    final path = join(directory.path, 'flashcards.db');
+
+    _database = await openDatabase(
+      path,
+      version: 1,
+      onCreate: (db, version) {
+        return db.execute('''
+          CREATE TABLE flashcards(
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            question TEXT,
+            answer TEXT
+          )
+        ''');
+      },
+    );
+
+    // Insert sample data if empty
+    final existing = await _database.query('flashcards');
+    if (existing.isEmpty) {
+      await _insertSampleData();
+    }
+
+    _loadFlashcards();
+  }
+
+  Future<void> _insertSampleData() async {
+    List<Map<String, String>> data = [
+      {"question": "What does HTML stand for?", "answer": "Hypertext Markup Language"},
+      {"question": "Which tag is used for the largest heading in HTML?", "answer": "<h1>"},
+      {"question": "What does CSS stand for?", "answer": "Cascading Style Sheets"},
+      {"question": "Which language is used to add interactivity to websites?", "answer": "JavaScript"},
+      {"question": "What is the purpose of the <meta> tag?", "answer": "To provide metadata"},
+    ];
+
+    for (var flashcard in data) {
+      await _database.insert('flashcards', flashcard);
+    }
+  }
+
+  Future<void> _loadFlashcards() async {
+    final data = await _database.query('flashcards');
+    setState(() {
+      _flashcards = data;
+      showAnswers = List.generate(_flashcards.length, (_) => false);
+    });
+  }
 
   void flipCard(int index) {
     setState(() {
@@ -44,8 +96,10 @@ class _FlashCardScreenState extends State<FlashCardScreen> {
       appBar: AppBar(title: Text("Flashcard App")),
       body: Padding(
         padding: EdgeInsets.all(16.0),
-        child: ListView.builder(
-          itemCount: flashcards.length,
+        child: _flashcards.isEmpty
+            ? Center(child: CircularProgressIndicator())
+            : ListView.builder(
+          itemCount: _flashcards.length,
           itemBuilder: (context, index) {
             return GestureDetector(
               onTap: () => flipCard(index),
@@ -59,9 +113,14 @@ class _FlashCardScreenState extends State<FlashCardScreen> {
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
-                  showAnswers[index] ? flashcards[index]["answer"]! : flashcards[index]["question"]!,
+                  showAnswers[index]
+                      ? _flashcards[index]['answer']
+                      : _flashcards[index]['question'],
                   textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+                  style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white),
                 ),
               ),
             );
@@ -71,4 +130,3 @@ class _FlashCardScreenState extends State<FlashCardScreen> {
     );
   }
 }
-

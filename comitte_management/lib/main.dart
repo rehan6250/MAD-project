@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:sqflite/sqflite.dart';
+import 'package:path/path.dart';
+import 'package:path_provider/path_provider.dart';
+import 'dart:io';
 import 'dart:math';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
   runApp(CommitteeApp());
 }
 
@@ -9,7 +14,9 @@ class CommitteeApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      title: 'Committee App',
       debugShowCheckedModeBanner: false,
+      theme: ThemeData(primarySwatch: Colors.indigo),
       home: CommitteeScreen(),
     );
   }
@@ -24,62 +31,114 @@ class _CommitteeScreenState extends State<CommitteeScreen> {
   final TextEditingController nameController = TextEditingController();
   final TextEditingController limitController = TextEditingController();
 
+  late Database _database;
   List<String> members = [];
   List<String> committeeOrder = [];
-  double? moneyLimit;
+  double? moneyLimit = 0;
   double totalCommitteeAmount = 0;
 
-  void setMoneyLimit() {
-    double? limit = double.tryParse(limitController.text);
+  @override
+  void initState() {
+    super.initState();
+    _initDatabase();
+  }
+
+  Future<void> _initDatabase() async {
+    final directory = await getApplicationDocumentsDirectory();
+    final path = join(directory.path, 'committee.db');
+
+    _database = await openDatabase(
+      path,
+      version: 1,
+      onCreate: (db, version) async {
+        await db.execute('''
+          CREATE TABLE members (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT
+          );
+        ''');
+        await db.execute('''
+          CREATE TABLE settings (
+            key TEXT PRIMARY KEY,
+            value TEXT
+          );
+        ''');
+      },
+    );
+
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    final memberList = await _database.query('members');
+    final settingList = await _database.query('settings', where: "key = 'moneyLimit'");
+
+    setState(() {
+      members = memberList.map((e) => e['name'].toString()).toList();
+      if (settingList.isNotEmpty) {
+        moneyLimit = double.tryParse(settingList.first['value'].toString()) ?? 0;
+        totalCommitteeAmount = members.length * (moneyLimit ?? 0);
+        limitController.text = moneyLimit.toString();
+      }
+    });
+  }
+
+  Future<void> _setMoneyLimit() async {
+    final limit = double.tryParse(limitController.text.trim());
     if (limit != null && limit > 0) {
+      await _database.insert(
+        'settings',
+        {'key': 'moneyLimit', 'value': limit.toString()},
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
       setState(() {
         moneyLimit = limit;
-        totalCommitteeAmount = 0;
-        members.clear();
-        committeeOrder.clear();
+        totalCommitteeAmount = members.length * moneyLimit!;
       });
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Money limit set to $moneyLimit")),
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Enter a valid money limit greater than 0")),
+        SnackBar(content: Text("Please enter a valid money limit")),
       );
     }
   }
 
-  void addMember() {
-    String name = nameController.text;
-
-    if (moneyLimit == null) {
+  Future<void> _addMember() async {
+    final name = nameController.text.trim();
+    if (moneyLimit == null || moneyLimit! <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Set the money limit first!")),
+        SnackBar(content: Text("Please set the money limit first")),
       );
       return;
     }
 
     if (name.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Enter a valid name")),
+        SnackBar(content: Text("Please enter a valid member name")),
       );
       return;
     }
 
-    setState(() {
-      members.add(name);
-      totalCommitteeAmount = members.length * moneyLimit!;
-      nameController.clear();
-    });
+    await _database.insert('members', {'name': name});
+    nameController.clear();
+    _loadData();
   }
 
-  void startCommittee() {
-    if (members.isNotEmpty) {
-      List<String> shuffledList = List.from(members);
-      shuffledList.shuffle(Random());
-      setState(() {
-        committeeOrder = shuffledList;
-      });
+  void _startCommittee() {
+    if (members.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("No members added")),
+      );
+      return;
     }
+
+    final shuffled = List<String>.from(members)..shuffle(Random());
+    setState(() {
+      committeeOrder = shuffled;
+    });
   }
 
   @override
@@ -87,7 +146,7 @@ class _CommitteeScreenState extends State<CommitteeScreen> {
     return Scaffold(
       appBar: AppBar(title: Text("Committee Management")),
       body: Padding(
-        padding: EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
             TextField(
@@ -95,12 +154,23 @@ class _CommitteeScreenState extends State<CommitteeScreen> {
               keyboardType: TextInputType.number,
               decoration: InputDecoration(labelText: "Set Money Limit"),
             ),
-            ElevatedButton(onPressed: setMoneyLimit, child: Text("Set Limit")),
             SizedBox(height: 10),
-            TextField(controller: nameController, decoration: InputDecoration(labelText: "Enter Member Name")),
-            ElevatedButton(onPressed: addMember, child: Text("Add Member")),
-            SizedBox(height: 20),
-            Text("Members List", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            ElevatedButton(
+              onPressed: _setMoneyLimit,
+              child: Text("Set Limit"),
+            ),
+            Divider(height: 30),
+            TextField(
+              controller: nameController,
+              decoration: InputDecoration(labelText: "Enter Member Name"),
+            ),
+            SizedBox(height: 10),
+            ElevatedButton(
+              onPressed: _addMember,
+              child: Text("Add Member"),
+            ),
+            Divider(height: 30),
+            Text("Members (${members.length})", style: TextStyle(fontWeight: FontWeight.bold)),
             Expanded(
               child: ListView.builder(
                 itemCount: members.length,
@@ -111,16 +181,23 @@ class _CommitteeScreenState extends State<CommitteeScreen> {
                 },
               ),
             ),
-            Text("Total Committee Amount: $totalCommitteeAmount", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            ElevatedButton(onPressed: startCommittee, child: Text("Start Committee")),
+            SizedBox(height: 10),
+            Text("Total Committee Amount: Rs. $totalCommitteeAmount",
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
             SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: _startCommittee,
+              child: Text("Start Committee"),
+            ),
+            SizedBox(height: 10),
             if (committeeOrder.isNotEmpty)
               Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text("Committee Order", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                   ...committeeOrder.asMap().entries.map((entry) {
-                    int position = entry.key + 1;
-                    return Text("$position: ${entry.value} receives the committee", style: TextStyle(fontSize: 16));
+                    int index = entry.key + 1;
+                    return Text("$index. ${entry.value} receives the committee");
                   }).toList(),
                 ],
               ),

@@ -1,0 +1,26 @@
+name: studenttasktracker
+description: A task management app for students and teachers
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+  flutter: '>=3.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.2
+  sqflite: ^2.3.0
+  sqflite_common_ffi: ^2.3.1
+
+  path_provider: ^2.1.1
+  path: ^1.8.3
+  provider: ^6.1.1
+  intl: ^0.20.2
+  flutter_slidable: ^4.0.0
+  flutter_secure_storage: ^9.2.4
+  crypto: ^3.0.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0

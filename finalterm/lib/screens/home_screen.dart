@@ -6,6 +6,7 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:finalterm/screens/notifications_screen.dart';
 import 'package:finalterm/screens/group_chat_screen.dart';
 import 'dart:async';
+import '../../main.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -124,7 +125,7 @@ class _HomeScreenState extends State<HomeScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: const Color(0xFF181A20),
+      backgroundColor: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF181A20) : Colors.white,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -144,18 +145,19 @@ class _HomeScreenState extends State<HomeScreen> {
                     Row(
                       children: [
                         IconButton(
-                          icon: const Icon(Icons.arrow_back, color: Colors.white),
+                          icon: Icon(Icons.arrow_back, color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black),
                           onPressed: () => Navigator.pop(context),
                         ),
                         const SizedBox(width: 8),
-                        const Text('Profile', style: TextStyle(fontSize: 24, color: Colors.white, fontWeight: FontWeight.bold)),
+                        Text('Profile', style: TextStyle(fontSize: 24, color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black, fontWeight: FontWeight.bold)),
+                        Spacer(),
                       ],
                     ),
                     const SizedBox(height: 16),
                     ListTile(
-                      leading: const Icon(Icons.person, color: Colors.white),
-                      title: const Text('Name', style: TextStyle(color: Colors.white70)),
-                      subtitle: Text(username, style: const TextStyle(color: Colors.white, fontSize: 18)),
+                      leading: Icon(Icons.person, color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black),
+                      title: Text('Name', style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? Colors.white70 : Colors.black87)),
+                      subtitle: Text(username, style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black, fontSize: 18)),
                       trailing: TextButton(
                         onPressed: () async {
                           final controller = TextEditingController(text: username);
@@ -174,10 +176,20 @@ class _HomeScreenState extends State<HomeScreen> {
                             ),
                           );
                           if (result != null && result.isNotEmpty) {
-                            await _firestore.collection('users').doc(_auth.currentUser!.uid).update({'username': result});
-                            setState(() {});
-                            Navigator.pop(context);
-                            _showProfileScreen();
+                            // Duplicate username check
+                            final existing = await _firestore.collection('users')
+                              .where('username', isEqualTo: result)
+                              .get();
+                            if (existing.docs.isNotEmpty && existing.docs.first.id != _auth.currentUser!.uid) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('This username is already taken. Please choose another.')),
+                              );
+                            } else {
+                              await _firestore.collection('users').doc(_auth.currentUser!.uid).update({'username': result});
+                              setState(() {});
+                              Navigator.pop(context);
+                              _showProfileScreen();
+                            }
                           }
                         },
                         child: const Text('Edit', style: TextStyle(color: Colors.green)),
@@ -185,9 +197,9 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                     const Divider(color: Colors.white12),
                     ListTile(
-                      leading: const Icon(Icons.info_outline, color: Colors.white),
-                      title: const Text('About', style: TextStyle(color: Colors.white70)),
-                      subtitle: Text(about, style: const TextStyle(color: Colors.white, fontSize: 16)),
+                      leading: Icon(Icons.info_outline, color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black),
+                      title: Text('About', style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? Colors.white70 : Colors.black87)),
+                      subtitle: Text(about, style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black, fontSize: 16)),
                       trailing: TextButton(
                         onPressed: () async {
                           final controller = TextEditingController(text: about);
@@ -217,8 +229,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                     const SizedBox(height: 24),
                     ListTile(
-                      leading: const Icon(Icons.logout, color: Colors.white),
-                      title: const Text('Logout', style: TextStyle(color: Colors.white)),
+                      leading: Icon(Icons.logout, color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black),
+                      title: Text('Logout', style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black)),
                       onTap: () async {
                         final confirm = await showDialog<bool>(
                           context: context,
@@ -412,11 +424,12 @@ class _HomeScreenState extends State<HomeScreen> {
     }).toList();
 
     if (filteredGroups.isEmpty) {
-      return const Center(child: Text('No groups found.', style: TextStyle(color: Colors.white)));
+      return Center(child: Text('No groups found.', style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black)));
     }
 
-    return ListView.builder(
+    return ListView.separated(
       itemCount: filteredGroups.length,
+      separatorBuilder: (context, index) => const SizedBox(height: 16),
       itemBuilder: (context, index) {
         final group = filteredGroups[index];
         final groupData = group.data() as Map<String, dynamic>;
@@ -437,16 +450,17 @@ class _HomeScreenState extends State<HomeScreen> {
           }
         }
 
+        final isDark = Theme.of(context).brightness == Brightness.dark;
         return ListTile(
           leading: CircleAvatar(
             radius: 25,
             backgroundImage: groupProfilePic != null && groupProfilePic.isNotEmpty ? NetworkImage(groupProfilePic) : null,
-            child: groupProfilePic == null || groupProfilePic.isEmpty ? const Icon(Icons.group, color: Colors.white) : null,
-            backgroundColor: Colors.grey[700],
+            child: groupProfilePic == null || groupProfilePic.isEmpty ? Icon(Icons.group, color: isDark ? Colors.white : Colors.black) : null,
+            backgroundColor: isDark ? Colors.grey[700] : Colors.grey[300],
           ),
-          title: Text(groupName, style: const TextStyle(color: Colors.white)),
+          title: Text(groupName, style: TextStyle(color: isDark ? Colors.white : Colors.black)),
           trailing: isUnread
-              ? const Text(
+              ? Text(
                   'Unread msg',
                   style: TextStyle(color: Colors.red, fontSize: 12),
                 )
@@ -466,86 +480,99 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF181A20),
-      appBar: AppBar(
-        title: const Text('splittsmart', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 24)),
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: isDark
+              ? [Color(0xFF181818), Color(0xFF232526), Color(0xFF434343)]
+              : [Color(0xFFF5F5F5), Color(0xFFE0E0E0), Color(0xFFFFFFFF)],
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+        ),
+      ),
+      child: Scaffold(
         backgroundColor: Colors.transparent,
-        elevation: 0,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.more_vert),
-            onPressed: _showProfileScreen,
-          ),
-        ],
-      ),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: TextField(
-              onChanged: (value) {
-                setState(() {
-                  _searchQuery = value;
-                });
-              },
-              decoration: InputDecoration(
-                hintText: 'Search...',
-                hintStyle: TextStyle(color: Colors.white54),
-                prefixIcon: Icon(Icons.search, color: Colors.white54),
-                filled: true,
-                fillColor: Colors.grey[800],
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(30.0),
-                  borderSide: BorderSide.none,
-                ),
-              ),
-              style: TextStyle(color: Colors.white),
-            ),
-          ),
-          Expanded(
-            child: StreamBuilder<QuerySnapshot>(
-              stream: _firestore.collection('groups').where('members', arrayContains: _auth.currentUser?.uid).snapshots(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-                if (snapshot.hasError) {
-                  return Center(child: Text('Error: ${snapshot.error}', style: const TextStyle(color: Colors.red)));
-                }
-                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                  return const Center(child: Text('No groups yet. Create one!', style: TextStyle(color: Colors.white)));
-                }
-                return _buildGroupList(snapshot.data!.docs);
-              },
-            ),
-          ),
-        ],
-      ),
-      floatingActionButton: Padding(
-        padding: const EdgeInsets.only(bottom: 16.0),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.end,
-          children: [
-            FloatingActionButton(
-              heroTag: 'notifications',
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const NotificationsScreen()),
-                );
-              },
-              backgroundColor: Colors.green,
-              child: const Icon(Icons.notifications, color: Colors.white),
-            ),
-            const SizedBox(width: 16),
-            FloatingActionButton(
-              heroTag: 'add_group',
-              onPressed: () => _showCreateGroupDialog(context),
-              backgroundColor: Colors.green,
-              child: const Icon(Icons.add, color: Colors.white),
+        appBar: AppBar(
+          title: Text('splittsmart', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 24, color: isDark ? Colors.white : Colors.black)),
+          backgroundColor: isDark ? Color(0xFF232526) : Color(0xFFF5F5F5),
+          elevation: 0,
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.more_vert),
+              color: isDark ? Colors.white : Colors.black,
+              onPressed: _showProfileScreen,
             ),
           ],
+        ),
+        body: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: TextField(
+                onChanged: (value) {
+                  setState(() {
+                    _searchQuery = value;
+                  });
+                },
+                decoration: InputDecoration(
+                  hintText: 'Search...',
+                  hintStyle: TextStyle(color: isDark ? Colors.white54 : Colors.black54),
+                  prefixIcon: Icon(Icons.search, color: isDark ? Colors.white54 : Colors.black54),
+                  filled: true,
+                  fillColor: isDark ? Colors.grey[800] : Colors.grey[200],
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(30.0),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+                style: TextStyle(color: isDark ? Colors.white : Colors.black),
+              ),
+            ),
+            Expanded(
+              child: StreamBuilder<QuerySnapshot>(
+                stream: _firestore.collection('groups').where('members', arrayContains: _auth.currentUser?.uid).snapshots(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  if (snapshot.hasError) {
+                    return Center(child: Text('Error: ${snapshot.error}', style: TextStyle(color: Colors.red)));
+                  }
+                  if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                    return Center(child: Text('No groups yet. Create one!', style: TextStyle(color: isDark ? Colors.white : Colors.black)));
+                  }
+                  return _buildGroupList(snapshot.data!.docs);
+                },
+              ),
+            ),
+          ],
+        ),
+        floatingActionButton: Padding(
+          padding: const EdgeInsets.only(bottom: 16.0),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              FloatingActionButton(
+                heroTag: 'notifications',
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const NotificationsScreen()),
+                  );
+                },
+                backgroundColor: Colors.green,
+                child: const Icon(Icons.notifications, color: Colors.white),
+              ),
+              const SizedBox(width: 16),
+              FloatingActionButton(
+                heroTag: 'add_group',
+                onPressed: () => _showCreateGroupDialog(context),
+                backgroundColor: Colors.green,
+                child: const Icon(Icons.add, color: Colors.white),
+              ),
+            ],
+          ),
         ),
       ),
     );

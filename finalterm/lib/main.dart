@@ -10,16 +10,25 @@ void main() async {
   runApp(const MyApp());
 }
 
+class ThemeController {
+  static final ValueNotifier<ThemeMode> themeNotifier = ValueNotifier(ThemeMode.dark);
+}
+
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'WhatsApp Clone',
-      theme: ThemeData.dark(),
-      debugShowCheckedModeBanner: false,
-      home: const AuthWrapper(),
+    return ValueListenableBuilder<ThemeMode>(
+      valueListenable: ThemeController.themeNotifier,
+      builder: (context, mode, _) => MaterialApp(
+        title: 'WhatsApp Clone',
+        theme: ThemeData.light(),
+        darkTheme: ThemeData.dark(),
+        themeMode: mode,
+        debugShowCheckedModeBanner: false,
+        home: const AuthWrapper(),
+      ),
     );
   }
 }

@@ -45,19 +45,28 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF181A20),
-      appBar: AppBar(
-        title: const Text('All Notifications'),
-        backgroundColor: const Color(0xFF181A20),
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Color(0xFF181818), Color(0xFF232526), Color(0xFF434343)],
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+        ),
       ),
-      body: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildInvitationsSection(),
-            _buildOtherNotificationsSection(),
-          ],
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        appBar: AppBar(
+          title: const Text('All Notifications'),
+          backgroundColor: const Color(0xFF181A20),
+        ),
+        body: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildInvitationsSection(),
+              _buildOtherNotificationsSection(),
+            ],
+          ),
         ),
       ),
     );
@@ -192,10 +201,40 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   final doc = notifications[index];
                   final data = doc.data() as Map<String, dynamic>;
                   final isUnread = data['status'] == 'unread';
+                  String typeLabel = '';
+                  switch (data['type']) {
+                    case 'expense_added':
+                    case 'expense_add':
+                      typeLabel = 'Expense Added';
+                      break;
+                    case 'expense_updated':
+                      typeLabel = 'Expense Updated';
+                      break;
+                    case 'expense_deleted':
+                    case 'expense_remove':
+                      typeLabel = 'Expense Deleted';
+                      break;
+                    case 'user_invited':
+                    case 'invite':
+                      typeLabel = 'Invitation';
+                      break;
+                    case 'user_joined':
+                      typeLabel = 'User Joined';
+                      break;
+                    default:
+                      typeLabel = 'Notification';
+                  }
                   return ListTile(
                     tileColor: isUnread ? Colors.blueGrey.withOpacity(0.2) : null,
                     leading: Icon(isUnread ? Icons.notifications_active : Icons.notifications_none, color: Colors.white),
-                    title: Text(data['message'] ?? 'No message content', style: const TextStyle(color: Colors.white)),
+                    title: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(typeLabel, style: const TextStyle(color: Colors.amber, fontWeight: FontWeight.bold, fontSize: 13)),
+                        const SizedBox(height: 2),
+                        Text(data['message'] ?? 'No message content', style: const TextStyle(color: Colors.white)),
+                      ],
+                    ),
                     subtitle: Text(
                       (data['createdAt'] as Timestamp).toDate().toString(),
                       style: const TextStyle(color: Colors.white70, fontSize: 12),

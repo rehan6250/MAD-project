@@ -98,102 +98,111 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF181A20),
-      appBar: AppBar(
-        title: const Text('Group Info'),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Color(0xFF181818), Color(0xFF232526), Color(0xFF434343)],
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+        ),
       ),
-      body: StreamBuilder<DocumentSnapshot>(
-        stream: _firestore.collection('groups').doc(widget.groupId).snapshots(),
-        builder: (context, snapshot) {
-          if (!snapshot.hasData) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          final groupData = snapshot.data!.data() as Map<String, dynamic>;
-          final groupName = groupData['name'] ?? 'Group';
-          final groupDescription = groupData['description'] ?? 'No description provided.';
-          final members = List<String>.from(groupData['members'] ?? []);
-          final adminUid = groupData['createdBy'] ?? '';
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        appBar: AppBar(
+          title: const Text('Group Info'),
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+        ),
+        body: StreamBuilder<DocumentSnapshot>(
+          stream: _firestore.collection('groups').doc(widget.groupId).snapshots(),
+          builder: (context, snapshot) {
+            if (!snapshot.hasData) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            final groupData = snapshot.data!.data() as Map<String, dynamic>;
+            final groupName = groupData['name'] ?? 'Group';
+            final groupDescription = groupData['description'] ?? 'No description provided.';
+            final members = List<String>.from(groupData['members'] ?? []);
+            final adminUid = groupData['createdBy'] ?? '';
 
-          return SingleChildScrollView(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Center(
-                  child: CircleAvatar(
-                    radius: 50,
-                    backgroundImage: groupData['groupProfilePic'] != null ? NetworkImage(groupData['groupProfilePic']) : null,
-                    child: groupData['groupProfilePic'] == null ? const Icon(Icons.group, size: 50) : null,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Center(
-                  child: Text(
-                    groupName,
-                    style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Center(
-                  child: Text(
-                    '${members.length} members',
-                    style: const TextStyle(fontSize: 16, color: Colors.white70),
-                  ),
-                ),
-                const SizedBox(height: 24),
-                const Text('Description', style: TextStyle(color: Colors.white70, fontSize: 16)),
-                const SizedBox(height: 4),
-                Text(
-                  groupDescription,
-                  style: const TextStyle(fontSize: 16, color: Colors.white),
-                ),
-                const SizedBox(height: 24),
-                ElevatedButton.icon(
-                  onPressed: () => _navigateToAddExpense(context, members),
-                  icon: const Icon(Icons.receipt_long),
-                  label: const Text('Manage Expenses'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue.shade700,
-                    minimumSize: const Size(double.infinity, 50),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                ElevatedButton.icon(
-                  onPressed: () => _inviteUser(context),
-                  icon: const Icon(Icons.person_add),
-                  label: const Text('Invite User'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green,
-                    minimumSize: const Size(double.infinity, 50),
-                  ),
-                ),
-                const SizedBox(height: 24),
-                const Text(
-                  'Members',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
-                ),
-                const Divider(color: Colors.white24),
-                _buildMembersList(members, adminUid),
-                const SizedBox(height: 32),
-                ElevatedButton.icon(
-                  onPressed: () => _leaveGroup(context),
-                  icon: const Icon(Icons.exit_to_app, color: Colors.white),
-                  label: const Text('Leave Group'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.red.shade700,
-                    minimumSize: const Size(double.infinity, 50),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+            return SingleChildScrollView(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: CircleAvatar(
+                      radius: 50,
+                      backgroundImage: groupData['groupProfilePic'] != null ? NetworkImage(groupData['groupProfilePic']) : null,
+                      child: groupData['groupProfilePic'] == null ? const Icon(Icons.group, size: 50) : null,
                     ),
                   ),
-                ),
-              ],
-            ),
-          );
-        },
+                  const SizedBox(height: 16),
+                  Center(
+                    child: Text(
+                      groupName,
+                      style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Center(
+                    child: Text(
+                      '${members.length} members',
+                      style: const TextStyle(fontSize: 16, color: Colors.white70),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  const Text('Description', style: TextStyle(color: Colors.white70, fontSize: 16)),
+                  const SizedBox(height: 4),
+                  Text(
+                    groupDescription,
+                    style: const TextStyle(fontSize: 16, color: Colors.white),
+                  ),
+                  const SizedBox(height: 24),
+                  ElevatedButton.icon(
+                    onPressed: () => _navigateToAddExpense(context, members),
+                    icon: const Icon(Icons.receipt_long),
+                    label: const Text('Manage Expenses'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blue.shade700,
+                      minimumSize: const Size(double.infinity, 50),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton.icon(
+                    onPressed: () => _inviteUser(context),
+                    icon: const Icon(Icons.person_add),
+                    label: const Text('Invite User'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green,
+                      minimumSize: const Size(double.infinity, 50),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  const Text(
+                    'Members',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+                  ),
+                  const Divider(color: Colors.white24),
+                  _buildMembersList(members, adminUid),
+                  const SizedBox(height: 32),
+                  ElevatedButton.icon(
+                    onPressed: () => _leaveGroup(context),
+                    icon: const Icon(Icons.exit_to_app, color: Colors.white),
+                    label: const Text('Leave Group'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red.shade700,
+                      minimumSize: const Size(double.infinity, 50),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
       ),
     );
   }

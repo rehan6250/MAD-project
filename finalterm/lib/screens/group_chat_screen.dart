@@ -228,8 +228,6 @@ class _GroupChatScreenState extends State<GroupChatScreen> with SingleTickerProv
               const Divider(color: Colors.white24),
               _buildBalancesList(groupData),
               const SizedBox(height: 24),
-              _buildSettleUpSection(groupData),
-              const SizedBox(height: 24),
               const Text(
                 'Expenses',
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
@@ -237,6 +235,10 @@ class _GroupChatScreenState extends State<GroupChatScreen> with SingleTickerProv
               const Divider(color: Colors.white24),
               _buildExpensesList(),
               _buildExpenseHistoryTable(),
+              const SizedBox(height: 24),
+              _buildSettleUpSection(groupData),
+              const SizedBox(height: 24),
+              _buildSettleUpHistorySection(),
             ],
           ),
         );
@@ -861,6 +863,13 @@ class _GroupChatScreenState extends State<GroupChatScreen> with SingleTickerProv
                         balances[t.from] = (balances[t.from] as num? ?? 0.0) + t.amount;
                         balances[t.to] = (balances[t.to] as num? ?? 0.0) - t.amount;
                         await _firestore.collection('groups').doc(widget.groupId).update({'balances': balances});
+                        // Record settlement in Firestore
+                        await _firestore.collection('groups').doc(widget.groupId).collection('settlements').add({
+                          'from': t.from,
+                          'to': t.to,
+                          'amount': t.amount,
+                          'timestamp': FieldValue.serverTimestamp(),
+                        });
                         if (mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(content: Text('Settlement recorded!')),
@@ -874,6 +883,63 @@ class _GroupChatScreenState extends State<GroupChatScreen> with SingleTickerProv
               ),
             )),
       ],
+    );
+  }
+
+  Widget _buildSettleUpHistorySection() {
+    return StreamBuilder<QuerySnapshot>(
+      stream: _firestore
+          .collection('groups')
+          .doc(widget.groupId)
+          .collection('settlements')
+          .orderBy('timestamp', descending: true)
+          .limit(30)
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          return const SizedBox.shrink();
+        }
+        final settlements = snapshot.data!.docs;
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Settle Up History', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+            const Divider(color: Colors.white24),
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: DataTable(
+                headingRowColor: MaterialStateProperty.all(Colors.grey[850]),
+                dataRowColor: MaterialStateProperty.all(Colors.grey[900]?.withOpacity(0.85)),
+                columnSpacing: 18,
+                columns: const [
+                  DataColumn(label: Text('From', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))),
+                  DataColumn(label: Text('To', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))),
+                  DataColumn(label: Text('Amount', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))),
+                  DataColumn(label: Text('Date', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))),
+                ],
+                rows: settlements.map((doc) {
+                  final data = doc.data() as Map<String, dynamic>;
+                  final from = data['from'] ?? '';
+                  final to = data['to'] ?? '';
+                  final amount = (data['amount'] as num?)?.toStringAsFixed(2) ?? '-';
+                  final timestamp = (data['timestamp'] as Timestamp?)?.toDate();
+                  return DataRow(cells: [
+                    DataCell(Text(from, style: const TextStyle(color: Colors.white))),
+                    DataCell(Text(to, style: const TextStyle(color: Colors.white))),
+                    DataCell(Text(amount, style: const TextStyle(color: Colors.greenAccent, fontWeight: FontWeight.bold))),
+                    DataCell(Text(
+                      timestamp != null ?
+                        '${timestamp.year}-${timestamp.month.toString().padLeft(2, '0')}-${timestamp.day.toString().padLeft(2, '0')}' :
+                        '-',
+                      style: const TextStyle(color: Colors.white38),
+                    )),
+                  ]);
+                }).toList(),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }

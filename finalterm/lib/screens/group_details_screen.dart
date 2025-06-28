@@ -124,6 +124,8 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
             final groupDescription = groupData['description'] ?? 'No description provided.';
             final members = List<String>.from(groupData['members'] ?? []);
             final adminUid = groupData['createdBy'] ?? '';
+            final isAdmin = adminUid == _auth.currentUser?.uid;
+            final isMember = members.contains(_auth.currentUser?.uid);
 
             return SingleChildScrollView(
               padding: const EdgeInsets.all(16.0),
@@ -160,7 +162,7 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
                   ),
                   const SizedBox(height: 24),
                   ElevatedButton.icon(
-                    onPressed: () => _navigateToAddExpense(context, members),
+                    onPressed: (isAdmin || isMember) ? () => _navigateToAddExpense(context, members) : null,
                     icon: const Icon(Icons.receipt_long),
                     label: const Text('Manage Expenses'),
                     style: ElevatedButton.styleFrom(

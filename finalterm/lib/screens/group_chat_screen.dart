@@ -827,117 +827,154 @@ class _GroupChatScreenState extends State<GroupChatScreen> with SingleTickerProv
     final currentUserId = _auth.currentUser?.uid;
     if (members.isEmpty || currentUserId == null) return const SizedBox.shrink();
 
-    final transactions = _calculateSettlements(balances);
-    final myDebts = transactions.where((t) => t.from == currentUserId).toList();
-    if (myDebts.isEmpty) {
-      return const SizedBox.shrink();
-    }
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text('Settle Up', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
-        const Divider(color: Colors.white24),
-        ...myDebts.map((t) => Card(
-              color: Colors.green[900]?.withOpacity(0.85),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              elevation: 3,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Expanded(
-                      child: Text(
-                        'You owe ${t.amount.toStringAsFixed(2)} to ${t.to}',
+    return FutureBuilder<QuerySnapshot>(
+      future: _firestore.collection('users').where(FieldPath.documentId, whereIn: members).get(),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+        final userDocs = snapshot.data!.docs;
+        final userNames = {for (var doc in userDocs) doc.id: (doc.data() as Map<String, dynamic>)['username'] ?? doc.id};
+        final transactions = _calculateSettlements(balances);
+        final myDebts = transactions.where((t) => t.from == currentUserId).toList();
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Settle Up', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+            const Divider(color: Colors.white24),
+            if (myDebts.isEmpty)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 12.0),
+                child: Text('No settlements to show.', style: TextStyle(color: Colors.white54)),
+              ),
+            ...myDebts.map((t) {
+              final isAdmin = _auth.currentUser?.uid == groupData['createdBy'];
+              final isCreditor = _auth.currentUser?.uid == t.to;
+              return Card(
+                color: Colors.green[900]?.withOpacity(0.85),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                elevation: 3,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'You have to pay ${t.amount.toStringAsFixed(2)} Rs to ${userNames[t.to] ?? t.to}',
                         style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
                       ),
-                    ),
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      ),
-                      onPressed: () async {
-                        // Settle up: update balances
-                        final balances = Map<String, dynamic>.from(groupData['balances'] ?? {});
-                        balances[t.from] = (balances[t.from] as num? ?? 0.0) + t.amount;
-                        balances[t.to] = (balances[t.to] as num? ?? 0.0) - t.amount;
-                        await _firestore.collection('groups').doc(widget.groupId).update({'balances': balances});
-                        // Record settlement in Firestore
-                        await _firestore.collection('groups').doc(widget.groupId).collection('settlements').add({
-                          'from': t.from,
-                          'to': t.to,
-                          'amount': t.amount,
-                          'timestamp': FieldValue.serverTimestamp(),
-                        });
-                        if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Settlement recorded!')),
-                          );
-                        }
-                      },
-                      child: const Text('Settle Up', style: TextStyle(color: Colors.white)),
-                    ),
-                  ],
+                      const SizedBox(height: 10),
+                      if (isAdmin || isCreditor)
+                        ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.green,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                          onPressed: () async {
+                            // Settle up: update balances
+                            final balances = Map<String, dynamic>.from(groupData['balances'] ?? {});
+                            balances[t.from] = (balances[t.from] as num? ?? 0.0) + t.amount;
+                            balances[t.to] = (balances[t.to] as num? ?? 0.0) - t.amount;
+                            await _firestore.collection('groups').doc(widget.groupId).update({'balances': balances});
+                            // Record settlement in Firestore
+                            await _firestore.collection('groups').doc(widget.groupId).collection('settlements').add({
+                              'from': t.from,
+                              'to': t.to,
+                              'amount': t.amount,
+                              'timestamp': FieldValue.serverTimestamp(),
+                            });
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Settlement recorded!')),
+                              );
+                              setState(() {}); // Refresh summary and balances
+                            }
+                          },
+                          child: const Text('Pay Now', style: TextStyle(color: Colors.white)),
+                        ),
+                    ],
+                  ),
                 ),
-              ),
-            )),
-      ],
+              );
+            }),
+          ],
+        );
+      },
     );
   }
 
   Widget _buildSettleUpHistorySection() {
-    return StreamBuilder<QuerySnapshot>(
-      stream: _firestore
-          .collection('groups')
-          .doc(widget.groupId)
-          .collection('settlements')
-          .orderBy('timestamp', descending: true)
-          .limit(30)
-          .snapshots(),
-      builder: (context, snapshot) {
-        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-          return const SizedBox.shrink();
-        }
-        final settlements = snapshot.data!.docs;
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Settle Up History', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
-            const Divider(color: Colors.white24),
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: DataTable(
-                headingRowColor: MaterialStateProperty.all(Colors.grey[850]),
-                dataRowColor: MaterialStateProperty.all(Colors.grey[900]?.withOpacity(0.85)),
-                columnSpacing: 18,
-                columns: const [
-                  DataColumn(label: Text('From', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))),
-                  DataColumn(label: Text('To', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))),
-                  DataColumn(label: Text('Amount', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))),
-                  DataColumn(label: Text('Date', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))),
-                ],
-                rows: settlements.map((doc) {
-                  final data = doc.data() as Map<String, dynamic>;
-                  final from = data['from'] ?? '';
-                  final to = data['to'] ?? '';
-                  final amount = (data['amount'] as num?)?.toStringAsFixed(2) ?? '-';
-                  final timestamp = (data['timestamp'] as Timestamp?)?.toDate();
-                  return DataRow(cells: [
-                    DataCell(Text(from, style: const TextStyle(color: Colors.white))),
-                    DataCell(Text(to, style: const TextStyle(color: Colors.white))),
-                    DataCell(Text(amount, style: const TextStyle(color: Colors.greenAccent, fontWeight: FontWeight.bold))),
-                    DataCell(Text(
-                      timestamp != null ?
-                        '${timestamp.year}-${timestamp.month.toString().padLeft(2, '0')}-${timestamp.day.toString().padLeft(2, '0')}' :
-                        '-',
-                      style: const TextStyle(color: Colors.white38),
-                    )),
-                  ]);
-                }).toList(),
-              ),
-            ),
-          ],
+    return StreamBuilder<DocumentSnapshot>(
+      stream: _firestore.collection('groups').doc(widget.groupId).snapshots(),
+      builder: (context, groupSnapshot) {
+        if (!groupSnapshot.hasData) return const SizedBox.shrink();
+        final groupData = groupSnapshot.data!.data() as Map<String, dynamic>?;
+        final members = List<String>.from(groupData?['members'] ?? []);
+        return FutureBuilder<QuerySnapshot>(
+          future: _firestore.collection('users').where(FieldPath.documentId, whereIn: members).get(),
+          builder: (context, userSnapshot) {
+            if (!userSnapshot.hasData) return const Center(child: CircularProgressIndicator());
+            final userDocs = userSnapshot.data!.docs;
+            final userNames = {for (var doc in userDocs) doc.id: (doc.data() as Map<String, dynamic>)['username'] ?? doc.id};
+            return StreamBuilder<QuerySnapshot>(
+              stream: _firestore
+                  .collection('groups')
+                  .doc(widget.groupId)
+                  .collection('settlements')
+                  .orderBy('timestamp', descending: true)
+                  .limit(30)
+                  .snapshots(),
+              builder: (context, snapshot) {
+                final settlements = snapshot.data?.docs ?? [];
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Settle Up History', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+                    const Divider(color: Colors.white24),
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: DataTable(
+                        headingRowColor: MaterialStateProperty.all(Colors.grey[850]),
+                        dataRowColor: MaterialStateProperty.all(Colors.grey[900]?.withOpacity(0.85)),
+                        columnSpacing: 18,
+                        columns: const [
+                          DataColumn(label: Text('From', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))),
+                          DataColumn(label: Text('To', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))),
+                          DataColumn(label: Text('Amount', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))),
+                          DataColumn(label: Text('Date', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))),
+                        ],
+                        rows: settlements.isEmpty
+                          ? [
+                              DataRow(cells: [
+                                DataCell(Text('-', style: const TextStyle(color: Colors.white54))),
+                                DataCell(Text('-', style: const TextStyle(color: Colors.white54))),
+                                DataCell(Text('-', style: const TextStyle(color: Colors.white54))),
+                                DataCell(Text('No settle up history yet.', style: const TextStyle(color: Colors.white54))),
+                              ]),
+                            ]
+                          : settlements.map((doc) {
+                              final data = doc.data() as Map<String, dynamic>;
+                              final from = data['from'] ?? '';
+                              final to = data['to'] ?? '';
+                              final amount = (data['amount'] as num?)?.toStringAsFixed(2) ?? '-';
+                              final timestamp = (data['timestamp'] as Timestamp?)?.toDate();
+                              return DataRow(cells: [
+                                DataCell(Text(userNames[from] ?? from, style: const TextStyle(color: Colors.white))),
+                                DataCell(Text(userNames[to] ?? to, style: const TextStyle(color: Colors.white))),
+                                DataCell(Text(amount, style: const TextStyle(color: Colors.greenAccent, fontWeight: FontWeight.bold))),
+                                DataCell(Text(
+                                  timestamp != null ?
+                                    '${timestamp.year}-${timestamp.month.toString().padLeft(2, '0')}-${timestamp.day.toString().padLeft(2, '0')}' :
+                                    '-',
+                                  style: const TextStyle(color: Colors.white38),
+                                )),
+                              ]);
+                            }).toList(),
+                      ),
+                    ),
+                  ],
+                );
+              },
+            );
+          },
         );
       },
     );

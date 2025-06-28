@@ -228,6 +228,8 @@ class _GroupChatScreenState extends State<GroupChatScreen> with SingleTickerProv
               const Divider(color: Colors.white24),
               _buildBalancesList(groupData),
               const SizedBox(height: 24),
+              _buildSettleUpSection(groupData),
+              const SizedBox(height: 24),
               const Text(
                 'Expenses',
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
@@ -812,6 +814,66 @@ class _GroupChatScreenState extends State<GroupChatScreen> with SingleTickerProv
           },
         );
       },
+    );
+  }
+
+  Widget _buildSettleUpSection(Map<String, dynamic> groupData) {
+    final balances = (groupData['balances'] as Map<String, dynamic>?)
+            ?.map((key, value) => MapEntry(key, (value as num).toDouble())) ??
+        {};
+    final members = List<String>.from(groupData['members'] ?? []);
+    final currentUserId = _auth.currentUser?.uid;
+    if (members.isEmpty || currentUserId == null) return const SizedBox.shrink();
+
+    final transactions = _calculateSettlements(balances);
+    final myDebts = transactions.where((t) => t.from == currentUserId).toList();
+    if (myDebts.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('Settle Up', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+        const Divider(color: Colors.white24),
+        ...myDebts.map((t) => Card(
+              color: Colors.green[900]?.withOpacity(0.85),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              elevation: 3,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'You owe ${t.amount.toStringAsFixed(2)} to ${t.to}',
+                        style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      onPressed: () async {
+                        // Settle up: update balances
+                        final balances = Map<String, dynamic>.from(groupData['balances'] ?? {});
+                        balances[t.from] = (balances[t.from] as num? ?? 0.0) + t.amount;
+                        balances[t.to] = (balances[t.to] as num? ?? 0.0) - t.amount;
+                        await _firestore.collection('groups').doc(widget.groupId).update({'balances': balances});
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Settlement recorded!')),
+                          );
+                        }
+                      },
+                      child: const Text('Settle Up', style: TextStyle(color: Colors.white)),
+                    ),
+                  ],
+                ),
+              ),
+            )),
+      ],
     );
   }
 }

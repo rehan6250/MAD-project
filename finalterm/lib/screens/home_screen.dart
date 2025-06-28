@@ -465,7 +465,11 @@ class _HomeScreenState extends State<HomeScreen> {
                   style: TextStyle(color: Colors.red, fontSize: 12),
                 )
               : null,
-          onTap: () {
+          onTap: () async {
+            // Mark group as read for current user
+            await _firestore.collection('groups').doc(group.id).update({
+              'lastRead.${_auth.currentUser!.uid}': FieldValue.serverTimestamp(),
+            });
             Navigator.push(
               context,
               MaterialPageRoute(

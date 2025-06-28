@@ -502,11 +502,29 @@ class _HomeScreenState extends State<HomeScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                CircleAvatar(
-                  radius: 28,
-                  backgroundImage: groupProfilePic != null && groupProfilePic.isNotEmpty ? NetworkImage(groupProfilePic) : null,
-                  child: groupProfilePic == null || groupProfilePic.isEmpty ? Icon(Icons.group, color: isDark ? Colors.white : Colors.black, size: 32) : null,
-                  backgroundColor: isDark ? Colors.grey[700] : Colors.grey[300],
+                Stack(
+                  children: [
+                    CircleAvatar(
+                      radius: 28,
+                      backgroundImage: groupProfilePic != null && groupProfilePic.isNotEmpty ? NetworkImage(groupProfilePic) : null,
+                      child: groupProfilePic == null || groupProfilePic.isEmpty ? Icon(Icons.group, color: isDark ? Colors.white : Colors.black, size: 32) : null,
+                      backgroundColor: isDark ? Colors.grey[700] : Colors.grey[300],
+                    ),
+                    if (isUnread)
+                      Positioned(
+                        top: 2,
+                        right: 2,
+                        child: Container(
+                          width: 14,
+                          height: 14,
+                          decoration: BoxDecoration(
+                            color: Colors.green,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 2),
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
                 const SizedBox(height: 10),
                 Text(
@@ -518,14 +536,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   textAlign: TextAlign.center,
                 ),
-                if (isUnread)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 6.0),
-                    child: Text(
-                      'Unread msg',
-                      style: TextStyle(color: Colors.red, fontSize: 12, fontWeight: FontWeight.bold),
-                    ),
-                  ),
               ],
             ),
           ),

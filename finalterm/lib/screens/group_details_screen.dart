@@ -263,6 +263,12 @@ class _GroupDetailsScreenState extends State<GroupDetailsScreen> {
           return const Center(child: CircularProgressIndicator());
         }
         final memberDocs = snapshot.data!.docs;
+        // Sort so that admin is first
+        memberDocs.sort((a, b) {
+          if (a.id == adminUid) return -1;
+          if (b.id == adminUid) return 1;
+          return 0;
+        });
         return ListView.builder(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),

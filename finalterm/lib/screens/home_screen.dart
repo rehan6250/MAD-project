@@ -427,9 +427,15 @@ class _HomeScreenState extends State<HomeScreen> {
       return Center(child: Text('No groups found.', style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black)));
     }
 
-    return ListView.separated(
+    return GridView.builder(
+      padding: const EdgeInsets.all(16),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        crossAxisSpacing: 16,
+        mainAxisSpacing: 16,
+        childAspectRatio: 1.2,
+      ),
       itemCount: filteredGroups.length,
-      separatorBuilder: (context, index) => const SizedBox(height: 16),
       itemBuilder: (context, index) {
         final group = filteredGroups[index];
         final groupData = group.data() as Map<String, dynamic>;
@@ -451,25 +457,15 @@ class _HomeScreenState extends State<HomeScreen> {
         }
 
         final isDark = Theme.of(context).brightness == Brightness.dark;
-        return ListTile(
-          leading: CircleAvatar(
-            radius: 25,
-            backgroundImage: groupProfilePic != null && groupProfilePic.isNotEmpty ? NetworkImage(groupProfilePic) : null,
-            child: groupProfilePic == null || groupProfilePic.isEmpty ? Icon(Icons.group, color: isDark ? Colors.white : Colors.black) : null,
-            backgroundColor: isDark ? Colors.grey[700] : Colors.grey[300],
-          ),
-          title: Text(groupName, style: TextStyle(color: isDark ? Colors.white : Colors.black)),
-          trailing: isUnread
-              ? Text(
-                  'Unread msg',
-                  style: TextStyle(color: Colors.red, fontSize: 12),
-                )
-              : null,
+        return GestureDetector(
           onTap: () async {
-            // Mark group as read for current user
-            await _firestore.collection('groups').doc(group.id).update({
-              'lastRead.${_auth.currentUser!.uid}': FieldValue.serverTimestamp(),
-            });
+            try {
+              await _firestore.collection('groups').doc(group.id).update({
+                'lastRead.${_auth.currentUser!.uid}': FieldValue.serverTimestamp(),
+              });
+            } catch (e) {
+              // Ignore error, proceed to navigation
+            }
             Navigator.push(
               context,
               MaterialPageRoute(
@@ -477,6 +473,50 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             );
           },
+          child: Container(
+            decoration: BoxDecoration(
+              color: isDark ? Colors.grey[900] : Colors.white,
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: Colors.white, width: 2),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.08),
+                  blurRadius: 8,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                CircleAvatar(
+                  radius: 28,
+                  backgroundImage: groupProfilePic != null && groupProfilePic.isNotEmpty ? NetworkImage(groupProfilePic) : null,
+                  child: groupProfilePic == null || groupProfilePic.isEmpty ? Icon(Icons.group, color: isDark ? Colors.white : Colors.black, size: 32) : null,
+                  backgroundColor: isDark ? Colors.grey[700] : Colors.grey[300],
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  groupName,
+                  style: TextStyle(
+                    color: isDark ? Colors.white : Colors.black,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                if (isUnread)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 6.0),
+                    child: Text(
+                      'Unread msg',
+                      style: TextStyle(color: Colors.red, fontSize: 12, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+              ],
+            ),
+          ),
         );
       },
     );
@@ -498,9 +538,9 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Scaffold(
         backgroundColor: Colors.transparent,
         appBar: AppBar(
-          title: Text('splittsmart', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 24, color: isDark ? Colors.white : Colors.black)),
-          backgroundColor: isDark ? Color(0xFF232526) : Color(0xFFF5F5F5),
-          elevation: 0,
+          title: Text('splittsmart', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 24, color: Colors.greenAccent)),
+          backgroundColor: isDark ? Color(0xFF181A20) : Color(0xFFe0ffe0),
+          elevation: 4,
           actions: [
             IconButton(
               icon: const Icon(Icons.more_vert),

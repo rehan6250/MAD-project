@@ -423,6 +423,18 @@ class _HomeScreenState extends State<HomeScreen> {
       return groupName.contains(_searchQuery.toLowerCase());
     }).toList();
 
+    // Sort by lastMessageAt descending (latest chat on top)
+    filteredGroups.sort((a, b) {
+      final aData = a.data() as Map<String, dynamic>;
+      final bData = b.data() as Map<String, dynamic>;
+      final aTime = aData['lastMessageAt'] as Timestamp?;
+      final bTime = bData['lastMessageAt'] as Timestamp?;
+      if (aTime == null && bTime == null) return 0;
+      if (aTime == null) return 1;
+      if (bTime == null) return -1;
+      return bTime.compareTo(aTime); // descending order
+    });
+
     if (filteredGroups.isEmpty) {
       return Center(child: Text('No groups found.', style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black)));
     }

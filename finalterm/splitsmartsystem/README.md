@@ -5,6 +5,11 @@ A new Flutter project.
 ## Getting Started
 
 This project is a starting point for a Flutter application.
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/55ba5263-ddf2-4408-9796-b630d9521331" width="200"/>
+  <img src="https://github.com/user-attachments/assets/111231a5-f10a-4fc8-b97a-600f5240c581" width="200"/>
+  <img src="https://github.com/user-attachments/assets/61404347-4611-426e-a7e0-c549a6484886" width="200"/>
+</p>
 
 A few resources to get you started if this is your first Flutter project:
 

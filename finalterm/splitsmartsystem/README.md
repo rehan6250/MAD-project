@@ -82,12 +82,27 @@ A new Flutter project.
 </div>
 
 
-A few resources to get you started if this is your first Flutter project:
-
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
 
 
+
+
+
+
+
+
+
+
+
+https://github.com/user-attachments/assets/7fcabe02-35d0-4b83-be59-5213b4bcd511
+
+
+
+https://github.com/user-attachments/assets/3b5ce946-8b44-4e2e-96f0-d1f69ab6da3e
+
+
+
+
+https://github.com/user-attachments/assets/d807bf4a-f2eb-4679-942d-437f41ef7b65
 
 
 [online documentation](https://docs.flutter.dev/), which offers tutorials,
